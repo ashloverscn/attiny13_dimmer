@@ -1,0 +1,148 @@
+
+attniy13_ADC1_0C0A.elf:     file format elf32-avr
+
+Sections:
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00000060  00000000  00000000  00000054  2**1
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .data         00000000  00800060  00800060  000000b4  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .comment      00000030  00000000  00000000  000000b4  2**0
+                  CONTENTS, READONLY
+  3 .note.gnu.avr.deviceinfo 0000003c  00000000  00000000  000000e4  2**2
+                  CONTENTS, READONLY
+  4 .debug_aranges 00000040  00000000  00000000  00000120  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  5 .debug_info   00000158  00000000  00000000  00000160  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  6 .debug_abbrev 000000eb  00000000  00000000  000002b8  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  7 .debug_line   000000ef  00000000  00000000  000003a3  2**0
+                  CONTENTS, READONLY, DEBUGGING
+  8 .debug_frame  00000064  00000000  00000000  00000494  2**2
+                  CONTENTS, READONLY, DEBUGGING
+  9 .debug_str    0000016b  00000000  00000000  000004f8  2**0
+                  CONTENTS, READONLY, DEBUGGING
+ 10 .debug_ranges 00000030  00000000  00000000  00000663  2**0
+                  CONTENTS, READONLY, DEBUGGING
+
+Disassembly of section .text:
+
+00000000 <__vectors>:
+   0:	09 c0       	rjmp	.+18     	; 0x14 <__ctors_end>
+   2:	0e c0       	rjmp	.+28     	; 0x20 <__bad_interrupt>
+   4:	0d c0       	rjmp	.+26     	; 0x20 <__bad_interrupt>
+   6:	0c c0       	rjmp	.+24     	; 0x20 <__bad_interrupt>
+   8:	0b c0       	rjmp	.+22     	; 0x20 <__bad_interrupt>
+   a:	0a c0       	rjmp	.+20     	; 0x20 <__bad_interrupt>
+   c:	09 c0       	rjmp	.+18     	; 0x20 <__bad_interrupt>
+   e:	08 c0       	rjmp	.+16     	; 0x20 <__bad_interrupt>
+  10:	07 c0       	rjmp	.+14     	; 0x20 <__bad_interrupt>
+  12:	06 c0       	rjmp	.+12     	; 0x20 <__bad_interrupt>
+
+00000014 <__ctors_end>:
+  14:	11 24       	eor	r1, r1
+  16:	1f be       	out	0x3f, r1	; 63
+  18:	cf e9       	ldi	r28, 0x9F	; 159
+  1a:	cd bf       	out	0x3d, r28	; 61
+  1c:	18 d0       	rcall	.+48     	; 0x4e <main>
+  1e:	1e c0       	rjmp	.+60     	; 0x5c <_exit>
+
+00000020 <__bad_interrupt>:
+  20:	ef cf       	rjmp	.-34     	; 0x0 <__vectors>
+
+00000022 <adc_setup>:
+#include <avr/io.h>
+
+void adc_setup (void)
+{
+	// Set the ADC input to PB2/ADC1
+	ADMUX |= (1 << MUX0);
+  22:	38 9a       	sbi	0x07, 0	; 7
+	//set presentation alignment left to right
+	ADMUX |= (1 << ADLAR);	
+  24:	3d 9a       	sbi	0x07, 5	; 7
+	// Set the prescaler to clock/16 & enable ADC
+	// At 1.2 MHz this is 75 kHz.
+	ADCSRA |= (1 << ADPS2) | (1 << ADEN);
+  26:	86 b1       	in	r24, 0x06	; 6
+  28:	84 68       	ori	r24, 0x84	; 132
+  2a:	86 b9       	out	0x06, r24	; 6
+  2c:	08 95       	ret
+
+0000002e <adc_read>:
+}
+
+int adc_read (void)
+{
+	// Start the conversion
+	ADCSRA |= (1 << ADSC);
+  2e:	36 9a       	sbi	0x06, 6	; 6
+	// Wait for it to finish
+	while (ADCSRA & (1 << ADSC));
+  30:	36 99       	sbic	0x06, 6	; 6
+  32:	fe cf       	rjmp	.-4      	; 0x30 <adc_read+0x2>
+	//read the result from ADCH register
+	return ADCH;
+  34:	85 b1       	in	r24, 0x05	; 5
+}
+  36:	90 e0       	ldi	r25, 0x00	; 0
+  38:	08 95       	ret
+
+0000003a <pwm_setup>:
+void pwm_setup (void)
+{
+	// Set Timer 0 prescaler to clock/8.
+	// At 9.6 MHz this is 1.2 MHz.
+	// dont enable if div by 8 fuse bit is enabled
+	TCCR0B |= (1 << CS00) | (1 << CS01);//we as already have fuse div/8 setand now we set div/64 which becomes = div/72
+  3a:	83 b7       	in	r24, 0x33	; 51
+  3c:	83 60       	ori	r24, 0x03	; 3
+  3e:	83 bf       	out	0x33, r24	; 51
+	// Set to 'Fast PWM' mode
+	TCCR0A |= (1 << WGM01) | (1 << WGM00);
+  40:	8f b5       	in	r24, 0x2f	; 47
+  42:	83 60       	ori	r24, 0x03	; 3
+  44:	8f bd       	out	0x2f, r24	; 47
+	// Set OC0A output on compare match
+	TCCR0A |= (1 << COM0A0) | (1 << COM0A1);
+  46:	8f b5       	in	r24, 0x2f	; 47
+  48:	80 6c       	ori	r24, 0xC0	; 192
+  4a:	8f bd       	out	0x2f, r24	; 47
+  4c:	08 95       	ret
+
+0000004e <main>:
+
+int main (void)
+{
+	int adc_in;
+	//ADC1 PB2 as input
+	DDRB |= (1 << PB2);
+  4e:	ba 9a       	sbi	0x17, 2	; 23
+	// OC0A PB0 as an output.
+	DDRB |= (1 << PB0);
+  50:	b8 9a       	sbi	0x17, 0	; 23
+	
+	adc_setup();
+  52:	e7 df       	rcall	.-50     	; 0x22 <adc_setup>
+	pwm_setup();
+  54:	f2 df       	rcall	.-28     	; 0x3a <pwm_setup>
+	
+	while (1) {
+		// Get the ADC value
+		adc_in = adc_read();
+  56:	eb df       	rcall	.-42     	; 0x2e <adc_read>
+	TCCR0A |= (1 << COM0A0) | (1 << COM0A1);
+}
+
+void pwm_write (int val)
+{
+	OCR0A = val;
+  58:	86 bf       	out	0x36, r24	; 54
+  5a:	fd cf       	rjmp	.-6      	; 0x56 <main+0x8>
+
+0000005c <_exit>:
+  5c:	f8 94       	cli
+
+0000005e <__stop_program>:
+  5e:	ff cf       	rjmp	.-2      	; 0x5e <__stop_program>
